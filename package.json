@@ -34,6 +34,7 @@
     "mqtt": "^5.3.4",
     "serialport": "^11.0.1",
     "set-interval-async": "^3.0.3",
+    "socket.io-client": "^4.8.3",
     "winston": "^3.10.0",
     "yargs": "^17.7.2"
   },

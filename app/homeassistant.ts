@@ -17,7 +17,7 @@ import {
     DeviceInformation,
     getTemperatureControlStateValues,
 } from './enervent'
-import ModbusRTU from 'modbus-serial'
+import type { ModbusClient } from './client'
 import { MqttClient } from 'mqtt'
 
 type EntityConfiguration = {
@@ -26,7 +26,7 @@ type EntityConfiguration = {
 
 const logger = createLogger('homeassistant')
 
-export const configureMqttDiscovery = async (modbusClient: ModbusRTU, mqttClient: MqttClient) => {
+export const configureMqttDiscovery = async (modbusClient: ModbusClient, mqttClient: MqttClient) => {
     // Build information about the ventilation unit. The "deviceIdentifier" is used as <node_id> in discovery topic
     // names, so it must match [a-zA-Z0-9_-].
     const modbusDeviceInformation = await getDeviceInformation(modbusClient)

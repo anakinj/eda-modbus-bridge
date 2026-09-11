@@ -1,4 +1,4 @@
-import { ReadRegisterResult } from 'modbus-serial/ModbusRTU'
+import type { RegisterResult } from './client'
 
 export const AVAILABLE_MODES: Record<string, number> = {
     'away': 1,
@@ -318,7 +318,7 @@ export const createModelNameString = (deviceInformation: Partial<DeviceInformati
     return modelName
 }
 
-export const parseAlarmTimestamp = (result: ReadRegisterResult) => {
+export const parseAlarmTimestamp = (result: RegisterResult) => {
     return new Date(result.data[2] + 2000, result.data[3] - 1, result.data[4], result.data[5], result.data[6])
 }
 
@@ -344,7 +344,7 @@ export const parseStateBitField = (state: number) => {
     }
 }
 
-export const hasRoomTemperatureSensor = (sensorTypesResult: ReadRegisterResult): boolean => {
+export const hasRoomTemperatureSensor = (sensorTypesResult: RegisterResult): boolean => {
     for (let i = 0; i < 6; i++) {
         const sensor = ANALOG_INPUT_SENSOR_TYPES.find((sensor) => sensor.type === sensorTypesResult.data[i])
 
@@ -357,8 +357,8 @@ export const hasRoomTemperatureSensor = (sensorTypesResult: ReadRegisterResult):
 }
 
 export const parseAnalogSensors = (
-    sensorTypesResult: ReadRegisterResult,
-    sensorValuesResult: ReadRegisterResult
+    sensorTypesResult: RegisterResult,
+    sensorValuesResult: RegisterResult
 ): AnalogSensorReadings => {
     const sensorReadings: AnalogSensorReadings = {}
 

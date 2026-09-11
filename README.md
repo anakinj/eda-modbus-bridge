@@ -9,7 +9,8 @@ settings), as well as an MQTT client which can publish readings/settings regular
 ventilation unit.
 
 Communication happens over RS-485 (Modbus RTU) by connecting a serial device to the "Freeway" port on the ventilation 
-unit's computer board, or alternatively using Modbus TCP for newer units that can be connected to the local network.
+unit's computer board, or alternatively using Modbus TCP for newer units that can be connected to the local network. 
+Units registered with Enervent's cloud service can also be reached through it, without any local connection to the unit.
 
 ## Table of contents
 
@@ -19,6 +20,7 @@ unit's computer board, or alternatively using Modbus TCP for newer units that ca
   * [Running as a systemd service](#running-as-a-systemd-service)
   * [Running as a Home Assistant OS addon](#running-as-a-home-assistant-os-addon)
 * [Usage](#usage)
+  * [Connecting over the cloud](#connecting-over-the-cloud)
 * [HTTP endpoints](#http-endpoints)
 * [MQTT support](#mqtt-support)
   * [Home Assistant MQTT discovery](#home-assistant-mqtt-discovery)
@@ -38,7 +40,7 @@ unit's computer board, or alternatively using Modbus TCP for newer units that ca
 * An Enervent ventilation unit with EDA or MD automation (Pingvin, Pandion, Pelican and LTR-3 confirmed working)
 * An RS-485 device (e.g. `/dev/ttyUSB0`) connected to the Enervent unit's Freeway port (see 
   [docs/CONNECTION.md](./docs/CONNECTION.md) for details on how to connect to the unit). Newer units that can be
-  connected directly to the local network don't need this.
+  connected directly to the local network don't need this, neither do units reached through Enervent's cloud service.
 
 ## Installation
 
@@ -86,27 +88,42 @@ node dist/eda-modbus-bridge.js [options]
 Options:
       --help                 Show help                                 [boolean]
       --version              Show version number                       [boolean]
-  -d, --device               The serial device to use, e.g. /dev/ttyUSB0
-                                                                      [required]
-  -s, --modbusSlave          The Modbus slave address               [default: 1]
+  -d, --device               The Modbus device to use, e.g. /dev/ttyUSB0 for
+                             Modbus RTU, tcp://192.168.1.40:502 for Modbus TCP
+                             or cloud://123456:1234 for the Enervent cloud
+                             service                         [string] [required]
+  -s, --modbusSlave          The Modbus slave address      [number] [default: 1]
+  -t, --modbusTimeout        The timeout for Modbus operations (in seconds)
+                                                           [number] [default: 5]
       --http                 Whether to enable the HTTP server or not
                                                        [boolean] [default: true]
-  -a, --httpListenAddress    The address to listen (HTTP)   [default: "0.0.0.0"]
-  -p, --httpPort             The port to listen on (HTTP)        [default: 8080]
-  -m, --mqttBrokerUrl        The URL to the MQTT broker, e.g. mqtt://localhost:18
-                             83. Omit to disable MQTT support.
-      --mqttUsername         The username to use when connecting to the MQTT bro
-                             ker. Omit to disable authentication.
-      --mqttPassword         The password to use when connecting to the MQTT bro
-                             ker. Required when mqttUsername is defined. Omit to
-                              disable authentication.
-  -i, --mqttPublishInterval  How often messages should be published over MQTT (i
-                             n seconds)                            [default: 10]
-      --mqttDiscovery        Whether to enable Home Assistant MQTT discovery sup
-                             port. Only effective when mqttBrokerUrl is defined.
-                                                       [boolean] [default: true]
+  -a, --httpListenAddress    The address to listen (HTTP)
+                                                   [string] [default: "0.0.0.0"]
+  -p, --httpPort             The port to listen on (HTTP)
+                                                        [number] [default: 8080]
+  -m, --mqttBrokerUrl        The URL to the MQTT broker, e.g.
+                             mqtt://localhost:1883. Omit to disable MQTT
+                             support.                                   [string]
+      --mqttUsername         The username to use when connecting to the MQTT
+                             broker. Omit to disable authentication.
+      --mqttPassword         The password to use when connecting to the MQTT
+                             broker. Required when mqttUsername is defined. Omit
+                             to disable authentication.
+  -i, --mqttPublishInterval  How often messages should be published over MQTT
+                             (in seconds)                          [default: 10]
+      --mqttDiscovery        Whether to enable Home Assistant MQTT discovery
+                             support. Only effective when mqttBrokerUrl is
+                             defined.                  [boolean] [default: true]
   -v, --debug                Enable debug logging     [boolean] [default: false]
 ```
+
+### Connecting over the cloud
+
+Units registered with Enervent's cloud service can be reached with `cloud://<serial number>:<PIN>`, using the same 
+serial number and PIN as https://my.enervent.com. No local network access to the ventilation unit is needed.
+
+Cloud support is experimental. The unit pushes register values to the cloud instead of being polled, so readings can be 
+slightly stale, and writes to registers the unit reports as read-only are refused rather than attempted.
 
 ## HTTP endpoints
 

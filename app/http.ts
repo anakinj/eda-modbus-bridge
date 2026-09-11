@@ -13,7 +13,7 @@ import {
 } from './modbus'
 import { createLogger } from './logger'
 import { Express, Request, Response } from 'express'
-import ModbusRTU from 'modbus-serial'
+import type { ModbusClient } from './client'
 
 const logger = createLogger('http')
 
@@ -21,7 +21,7 @@ const root = (req: Request, res: Response) => {
     res.send('eda-modbus-bridge')
 }
 
-const summary = async (modbusClient: ModbusRTU, req: Request, res: Response) => {
+const summary = async (modbusClient: ModbusClient, req: Request, res: Response) => {
     try {
         const modeSummary = await getModeSummary(modbusClient)
         const newestAlarm = await getNewestAlarm(modbusClient)
@@ -42,7 +42,7 @@ const summary = async (modbusClient: ModbusRTU, req: Request, res: Response) => 
     }
 }
 
-const getMode = async (modbusClient: ModbusRTU, req: Request, res: Response) => {
+const getMode = async (modbusClient: ModbusClient, req: Request, res: Response) => {
     try {
         const mode = req.params['mode']
         const status = await modbusGetMode(modbusClient, mode)
@@ -55,7 +55,7 @@ const getMode = async (modbusClient: ModbusRTU, req: Request, res: Response) => 
     }
 }
 
-const setMode = async (modbusClient: ModbusRTU, req: Request, res: Response) => {
+const setMode = async (modbusClient: ModbusClient, req: Request, res: Response) => {
     try {
         const mode = req.params['mode']
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -73,7 +73,7 @@ const setMode = async (modbusClient: ModbusRTU, req: Request, res: Response) => 
     }
 }
 
-const setSetting = async (modbusClient: ModbusRTU, req: Request, res: Response) => {
+const setSetting = async (modbusClient: ModbusClient, req: Request, res: Response) => {
     try {
         const setting = req.params['setting']
         const value = req.params['value']
@@ -94,7 +94,7 @@ const setSetting = async (modbusClient: ModbusRTU, req: Request, res: Response) 
     }
 }
 
-const acknowledgeAlarm = async (modbusClient: ModbusRTU, req: Request, res: Response) => {
+const acknowledgeAlarm = async (modbusClient: ModbusClient, req: Request, res: Response) => {
     try {
         logger.info('Acknowledging currently active alarm (if any)')
 
@@ -104,7 +104,7 @@ const acknowledgeAlarm = async (modbusClient: ModbusRTU, req: Request, res: Resp
     }
 }
 
-export const configureRoutes = (httpServer: Express, modbusClient: ModbusRTU) => {
+export const configureRoutes = (httpServer: Express, modbusClient: ModbusClient) => {
     /* eslint-disable @typescript-eslint/no-misused-promises */
     httpServer.get('/', root)
     httpServer.get('/summary', (req, res) => {

@@ -13,7 +13,9 @@ import {
 } from './app/mqtt.js'
 import { configureMqttDiscovery } from './app/homeassistant'
 import { createLogger, setLogLevel } from './app/logger'
-import { ModbusDeviceType, ModbusRtuDevice, ModbusTcpDevice, parseDevice, validateDevice } from './app/modbus'
+import { ModbusDevice, ModbusDeviceType, parseDevice, redactDevice, validateDevice } from './app/modbus'
+import { EnerventCloudClient } from './app/cloud'
+import type { ModbusClient } from './app/client'
 import { setIntervalAsync } from 'set-interval-async'
 import { ErrorHandler } from './app/error'
 
@@ -27,7 +29,7 @@ const argv = yargs(process.argv.slice(2))
     .options({
         'device': {
             description:
-                'The Modbus device to use, e.g. /dev/ttyUSB0 for Modbus RTU or tcp://192.168.1.40:502 for Modbus TCP',
+                'The Modbus device to use, e.g. /dev/ttyUSB0 for Modbus RTU, tcp://192.168.1.40:502 for Modbus TCP or cloud://123456:1234 for the Enervent cloud service',
             type: 'string',
             demandOption: true,
             alias: 'd',
@@ -94,12 +96,53 @@ const argv = yargs(process.argv.slice(2))
             alias: 'v',
         },
     })
+    // Every option can also be given as an EDA_-prefixed environment variable, e.g. EDA_DEVICE or
+    // EDA_MQTT_PASSWORD. Containers can then be configured without putting secrets on the command line.
+    .env('EDA')
     .parserConfiguration({
         // Protect against weird things happening if someone accidentally uses "-option" instead of "--option"
         'short-option-groups': false,
         'duplicate-arguments-array': false,
     })
     .parseSync()
+
+const createModbusSerialClient = (): ModbusRTU => {
+    const modbusClient = new ModbusRTU()
+    modbusClient.setID(argv.modbusSlave)
+    modbusClient.setTimeout(argv.modbusTimeout * 1000)
+
+    return modbusClient
+}
+
+const createModbusClient = async (device: ModbusDevice): Promise<ModbusClient> => {
+    switch (device.type) {
+        case ModbusDeviceType.RTU: {
+            const modbusClient = createModbusSerialClient()
+            await modbusClient.connectRTUBuffered(device.path, {
+                baudRate: 19200,
+                dataBits: 8,
+                parity: 'none',
+                stopBits: 1,
+            })
+            return modbusClient
+        }
+        case ModbusDeviceType.TCP: {
+            const modbusClient = createModbusSerialClient()
+            await modbusClient.connectTCP(device.hostname, {
+                port: device.port,
+            })
+            return modbusClient
+        }
+        case ModbusDeviceType.CLOUD: {
+            const cloudClient = new EnerventCloudClient({
+                serialNumber: device.serialNumber,
+                pin: device.pin,
+            })
+            await cloudClient.connect()
+            return cloudClient
+        }
+    }
+}
 
 void (async () => {
     // Adjust log level
@@ -109,32 +152,15 @@ void (async () => {
 
     // Create Modbus client. Abort if a malformed device is specified.
     if (!validateDevice(argv.device)) {
-        logger.error(`Malformed Modbus device ${argv.device} specified, exiting`)
+        logger.error(`Malformed Modbus device ${redactDevice(argv.device)} specified, exiting`)
         process.exit(1)
     }
     logger.info(
-        `Opening Modbus connection to ${argv.device}, slave ID ${argv.modbusSlave}, ${argv.modbusTimeout} second timeout`
+        `Opening Modbus connection to ${redactDevice(argv.device)}, slave ID ${argv.modbusSlave}, ${
+            argv.modbusTimeout
+        } second timeout`
     )
-    const modbusDevice = parseDevice(argv.device)
-    const modbusClient = new ModbusRTU()
-    modbusClient.setID(argv.modbusSlave)
-    modbusClient.setTimeout(argv.modbusTimeout * 1000)
-
-    // Use buffered RTU or TCP depending on device type
-    if (modbusDevice.type === ModbusDeviceType.RTU) {
-        const rtuDevice = modbusDevice as ModbusRtuDevice
-        await modbusClient.connectRTUBuffered(rtuDevice.path, {
-            baudRate: 19200,
-            dataBits: 8,
-            parity: 'none',
-            stopBits: 1,
-        })
-    } else if (modbusDevice.type === ModbusDeviceType.TCP) {
-        const tcpDevice = modbusDevice as ModbusTcpDevice
-        await modbusClient.connectTCP(tcpDevice.hostname, {
-            port: tcpDevice.port,
-        })
-    }
+    const modbusClient = await createModbusClient(parseDevice(argv.device))
 
     // Optionally create HTTP server
     if (argv.http) {

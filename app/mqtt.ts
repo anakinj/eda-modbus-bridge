@@ -10,7 +10,7 @@ import {
     acknowledgeAlarm,
 } from './modbus'
 import { createLogger } from './logger'
-import ModbusRTU from 'modbus-serial'
+import type { ModbusClient } from './client'
 import { MqttClient } from 'mqtt'
 
 export const TOPIC_PREFIX = 'eda'
@@ -27,7 +27,7 @@ type TopicMap = Record<string, TopicValue>
 
 const logger = createLogger('mqtt')
 
-export const publishValues = async (modbusClient: ModbusRTU, mqttClient: MqttClient) => {
+export const publishValues = async (modbusClient: ModbusClient, mqttClient: MqttClient) => {
     // Create a map from topic name to value that should be published
     const topicMap: TopicMap = {
         [TOPIC_NAME_STATUS]: 'online',
@@ -68,7 +68,7 @@ export const publishValues = async (modbusClient: ModbusRTU, mqttClient: MqttCli
     await publishTopics(mqttClient, topicMap)
 }
 
-export const publishDeviceInformation = async (modbusClient: ModbusRTU, mqttClient: MqttClient) => {
+export const publishDeviceInformation = async (modbusClient: ModbusClient, mqttClient: MqttClient) => {
     const topicMap: TopicMap = {}
 
     const deviceInformation = await getDeviceInformation(modbusClient)
@@ -86,7 +86,7 @@ export const publishDeviceInformation = async (modbusClient: ModbusRTU, mqttClie
     })
 }
 
-const publishModeSummary = async (modbusClient: ModbusRTU, mqttClient: MqttClient) => {
+const publishModeSummary = async (modbusClient: ModbusClient, mqttClient: MqttClient) => {
     // Create a map from topic name to value that should be published
     const topicMap: TopicMap = {}
 
@@ -102,7 +102,7 @@ const publishModeSummary = async (modbusClient: ModbusRTU, mqttClient: MqttClien
     await publishTopics(mqttClient, topicMap)
 }
 
-const publishSettings = async (modbusClient: ModbusRTU, mqttClient: MqttClient) => {
+const publishSettings = async (modbusClient: ModbusClient, mqttClient: MqttClient) => {
     // Create a map from topic name to value that should be published
     const topicMap: TopicMap = {}
     const settings = await getSettings(modbusClient)
@@ -142,7 +142,7 @@ export const subscribeToChanges = async (mqttClient: MqttClient) => {
 }
 
 export const handleMessage = async (
-    modbusClient: ModbusRTU,
+    modbusClient: ModbusClient,
     mqttClient: MqttClient,
     topicName: string,
     rawPayload: Buffer
